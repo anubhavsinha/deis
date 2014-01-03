@@ -6,6 +6,7 @@ Data models for the Deis API.
 
 from __future__ import unicode_literals
 import importlib
+import logging
 import os
 import subprocess
 
@@ -23,6 +24,9 @@ from json_field.fields import JSONField  # @UnusedImport
 
 from api import fields, tasks
 from provider import import_provider_module
+
+
+logger = logging.getLogger(__name__)
 
 # import user-defined configuration management module
 CM = importlib.import_module(settings.CM_MODULE)
@@ -443,6 +447,11 @@ class Node(UuidAuditedModel):
         return tasks.run_node.delay(self, command).wait()
 
 
+def log_event(app, msg, level=logging.INFO):
+    msg = "{}: {}".format(app.id, msg)
+    logger.log(level, msg)
+
+
 @python_2_unicode_compatible
 class App(UuidAuditedModel):
     """
@@ -544,6 +553,7 @@ class App(UuidAuditedModel):
              'deis/slugrunner'])
         env_args = ' '.join(["-e '{k}={v}'".format(**locals())
                              for k, v in release.config.values.items()])
+        log_event(self, "deis run '{}'".format(command))
         command = "sudo docker run {env_args} {docker_args} {command}".format(**locals())
         return node.run(command)
 
